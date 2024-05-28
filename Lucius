@@ -1,0 +1,71 @@
+local TweenService = game:GetService("TweenService")
+local lucius = workspace:WaitForChild("NPC"):WaitForChild("Talk"):FindFirstChild("Lucius")
+
+
+local function movePlayerToObjective(targetPosition)
+	local player = game.Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+
+	local primaryPart = character.PrimaryPart or character:WaitForChild("HumanoidRootPart")
+
+	local tweenInfo = TweenInfo.new(
+		2, -- Time (2 seconds)
+		Enum.EasingStyle.Linear, 
+		Enum.EasingDirection.Out, 
+		0, 
+		false, 
+		1 -- DelayTime (0 = no delay)
+	)
+
+	local goal = {}
+	goal.CFrame = CFrame.new(targetPosition)
+
+	local tween = TweenService:Create(primaryPart, tweenInfo, goal)
+
+	tween:Play()
+end
+
+local PlaceID = game.PlaceId
+local AllIDs = {}
+local foundAnything = ""
+local actualHour = os.date("!*t").hour
+local function TPReturner()
+	local Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100' .. (foundAnything ~= "" and '&cursor=' .. foundAnything or '')))
+	foundAnything = Site.nextPageCursor or ""
+	local ID, num = "", 0
+	for _, v in pairs(Site.data) do
+		if tonumber(v.maxPlayers) > tonumber(v.playing) then
+			local Possible = true
+			ID = tostring(v.id)
+			for _, Existing in pairs(AllIDs) do
+				if (num ~= 0 and ID == tostring(Existing)) or (num == 0 and tonumber(actualHour) ~= tonumber(Existing)) then
+					Possible = false
+					if num == 0 then AllIDs = {actualHour} end
+				end
+				num = num + 1
+			end
+			if Possible then
+				table.insert(AllIDs, ID)
+				game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
+				wait(4)
+			end
+		end
+	end
+end
+local function Teleport()
+	while wait() do pcall(TPReturner) end
+end
+
+
+
+if lucius then
+	print("Moving Character to Lucius")
+
+	local targetCFrame = lucius:GetModelCFrame().p
+	movePlayerToObjective(targetCFrame)
+else
+	print("Lucius has not spawned in yet")
+	Teleport()
+end
+
+
